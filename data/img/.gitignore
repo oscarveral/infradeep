@@ -1,0 +1,12 @@
+# Compressed files.
+*.tgz
+*.tar.gz
+*.zip
+*.tar.bz2
+
+# Dataset directories.
+train/
+val/
+
+# Metadata files.
+*.csv
