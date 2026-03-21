@@ -1,0 +1,21 @@
+dataset_name: "Iker/OpenHermes-2.5-English-Spanish"
+# El dataset tiene una sola división. Nosotros lo dividiremos
+dataset_split: "train"
+
+src_lang_col: "en"
+tgt_lang_col: "es"
+
+raw_data_dir: "data/raw"
+
+# La matriz de atención crece cuadráticamente con la longitud de la secuencia
+max_seq_len: 256
+
+# 900000/50000/50000
+train_ratio: 0.90
+val_ratio: 0.05
+test_ratio: 0.05
+
+split_seed: 42
+
+# Opciones para el DataLoader
+num_workers: 4

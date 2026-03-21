@@ -1,0 +1,9 @@
+torch>=2.2.0
+datasets>=2.18.0
+tokenizers>=0.15.0
+transformers>=4.39.0
+tqdm>=4.66.0
+pyyaml>=6.0.1
+sentencepiece>=0.2.0
+sacrebleu>=2.4.0
+numpy>=1.26.0
