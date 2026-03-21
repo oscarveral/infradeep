@@ -1,0 +1,4 @@
+profile: True
+activities: ["cpu", "cuda"]
+record_shapes: True
+profile_memory: True

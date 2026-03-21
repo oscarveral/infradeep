@@ -4,7 +4,7 @@
 ROOT_DIR="$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")"
 
 # Configuration of names.
-TARGET_DIR="$ROOT_DIR/data/img"
+TARGET_DIR="$ROOT_DIR/data/image"
 URL="https://s3.amazonaws.com/fast-ai-imageclas/imagenette2-320.tgz"
 FILE_NAME="dataset.tgz"
 
