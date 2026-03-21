@@ -28,9 +28,13 @@ declare -A PROFILE_MAP=(
     ["1xCPU"]="$PROFILES_DIR/profile_cpu.yaml"
     ["1xGPU"]="$PROFILES_DIR/profile_gpu.yaml"
     ["2xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["2xGPU-Distributed"]="$PROFILES_DIR/profile_multi_gpu.yaml"
     ["3xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["3xGPU-Distributed"]="$PROFILES_DIR/profile_multi_gpu.yaml"
     ["4xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU-Distributed"]="$PROFILES_DIR/profile_multi_gpu.yaml"
     ["24xCPU"]="$PROFILES_DIR/profile_cpu.yaml"
+    ["24xCPU-Distributed"]="$PROFILES_DIR/profile_cpu.yaml"
 )
 
 PROFILE_NO="$PROFILES_DIR/profile_no.yaml"
@@ -53,7 +57,7 @@ run_experiment() {
     echo "  output     : $output_dir"
     echo "========================================"
 
-    accelerate launch \
+    accelerate launch --num_cpu_threads_per_process 4 \
         --config_file "$accel_config" \
         "$RUN_SCRIPT" \
         --vit "$model_config" \
