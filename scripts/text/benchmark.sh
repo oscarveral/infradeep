@@ -1,31 +1,30 @@
 #!/bin/bash
 
 # ------------------------------------------------------------------ #
-#  Launch all ViT benchmark experiments with accelerate.
+#  Launch all MarianMT benchmark experiments with accelerate.
 #
-#  Each experiment directory under configs/image/cuda/<ENV>/ must
+#  Each experiment directory under configs/text/cuda/<ENV>/ must
 #  contain:
 #    - accelerate.yaml   (accelerate launch config)
-#    - model.yaml         (ViT model / benchmark config)
+#    - model.yaml         (MarianMT model / benchmark config)
 #
 #  Every experiment is run twice:
 #    1. Without profiling  (profile_no.yaml)
 #    2. With profiling     (matched profile config for the environment)
 #
-#  Results are stored in results/image/cuda/<ENV>/{no_profile,profile}/
+#  Results are stored in results/text/cuda/<ENV>/{no_profile,profile}/
 # ------------------------------------------------------------------ #
 
 set -euo pipefail
 
 ROOT_DIR="$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")"
-CONFIGS_DIR="$ROOT_DIR/configs/image/cuda"
+CONFIGS_DIR="$ROOT_DIR/configs/text/cuda"
 PROFILES_DIR="$ROOT_DIR/configs/profile"
-RESULTS_DIR="$ROOT_DIR/results/image/cuda"
-RUN_SCRIPT="$ROOT_DIR/scripts/image/run.py"
+RESULTS_DIR="$ROOT_DIR/results/text/cuda"
+RUN_SCRIPT="$ROOT_DIR/scripts/text/run.py"
 
 # Map each environment to its matching profile config.
 declare -A PROFILE_MAP=(
-    ["1xCPU"]="$PROFILES_DIR/profile_cpu.yaml"
     ["1xGPU"]="$PROFILES_DIR/profile_gpu.yaml"
     ["2xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
     ["3xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
@@ -52,10 +51,10 @@ run_experiment() {
     echo "  output     : $output_dir"
     echo "========================================"
 
-    accelerate launch --num_cpu_threads_per_process 4 \
+    accelerate launch --num_cpu_threads_per_process=4 \
         --config_file "$accel_config" \
         "$RUN_SCRIPT" \
-        --vit "$model_config" \
+        --model "$model_config" \
         --trace "$trace_config" \
         --output "$output_dir"
 
@@ -86,15 +85,6 @@ for env_dir in "$CONFIGS_DIR"/*/; do
         profile_config="$PROFILES_DIR/profile_gpu.yaml"
     fi
 
-    # Run 1: no profiling.
-    run_experiment \
-        "$env_name" \
-        "$accel_config" \
-        "$model_config" \
-        "$PROFILE_NO" \
-        "$RESULTS_DIR/$env_name/no_profile" \
-        "no profiling"
-
     # Run 2: with profiling.
     run_experiment \
         "$env_name" \
@@ -103,6 +93,16 @@ for env_dir in "$CONFIGS_DIR"/*/; do
         "$profile_config" \
         "$RESULTS_DIR/$env_name/profile" \
         "with profiling"
+
+    # Run 1: no profiling.
+    #run_experiment \
+    #    "$env_name" \
+    #    "$accel_config" \
+    #    "$model_config" \
+    #    "$PROFILE_NO" \
+    #    "$RESULTS_DIR/$env_name/no_profile" \
+    #    "no profiling"
+
 done
 
 echo ""

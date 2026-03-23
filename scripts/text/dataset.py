@@ -1,12 +1,13 @@
-"""Data download pipeline.
+#!/usr/bin/env python
+"""Data download pipeline for the EN→ES translation dataset.
 
 Downloads ``Iker/OpenHermes-2.5-English-Spanish`` from HuggingFace Hub,
 flattens the nested conversation format into parallel ``(en, es)`` text
-pairs, and saves three Arrow splits to ``data/raw/``.
+pairs, and saves three Arrow splits to ``data/text/``.
 
-Run once before training::
+Run once before benchmarking::
 
-    python src/text.py --config configs/data/config.yaml
+    python scripts/text/dataset.py
 
 Use ``--inspect`` to print column names and sample rows without saving.
 """
@@ -14,39 +15,46 @@ Use ``--inspect`` to print column names and sample rows without saving.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
+import yaml
 import datasets
 from datasets import DatasetDict
 
-from src.utils import create_logger, load_yaml_config
+# ------------------------------------------------------------------ #
+#  Defaults (matching MarianMTConfig)
+# ------------------------------------------------------------------ #
 
-logger = create_logger(__name__)
+DEFAULTS = {
+    "dataset_name": "Iker/OpenHermes-2.5-English-Spanish",
+    "dataset_split": "train",
+    "src_lang_col": "en",
+    "tgt_lang_col": "es",
+    "raw_data_dir": str(Path(__file__).resolve().parents[2] / "data" / "text"),
+    "val_ratio": 0.05,
+    "test_ratio": 0.05,
+    "split_seed": 42,
+}
+
+# ------------------------------------------------------------------ #
+#  Logger
+# ------------------------------------------------------------------ #
+
+logging.basicConfig(
+    format="%(asctime)s | %(levelname)-8s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    level=logging.INFO,
+)
+logger = logging.getLogger(__name__)
 
 
 def download_dataset(cfg: dict) -> DatasetDict:
-    """Download and split the dataset; save raw Arrow files to ``data/raw/``.
+    """Download and split the dataset; save raw Arrow files to ``raw_data_dir``.
 
-    The function is idempotent: if ``data/raw/`` already contains a saved
-    dataset it is loaded from disk and returned without re-downloading.
-
-    The raw dataset is saved in Arrow columnar format, which supports
-    memory-mapped access. DataLoader workers later read rows on demand via the
-    OS page cache: only requested bytes are loaded into RAM, which avoids
-    multiplying the dataset size by ``num_workers``.
-
-    The published dataset has a single ``"train"`` split; this function carves
-    out validation and test sets using the ratios in the config.
-
-    Args:
-        cfg (dict): Parsed data config from ``configs/data/config.yaml``.
-
-    Returns:
-        DatasetDict: Dataset with splits ``"train"``, ``"val"``, and ``"test"``.
+    Idempotent: if the data already exists on disk it is loaded directly.
     """
     raw_dir = cfg["raw_data_dir"]
     dataset_info_path = os.path.join(raw_dir, "dataset_dict.json")
@@ -92,36 +100,7 @@ def download_dataset(cfg: dict) -> DatasetDict:
 def _ensure_flat_columns(dataset: datasets.Dataset, cfg: dict) -> datasets.Dataset:
     """Normalise the raw dataset into flat ``(en, es)`` string columns.
 
-    The ``Iker/OpenHermes-2.5-English-Spanish`` dataset stores each row as two
-    parallel conversation lists::
-
-        conversations_english: [{"from": "human"/"gpt", "value": "..."}, ...]
-        conversations_spanish: [{"from": "human"/"gpt", "value": "..."}, ...]
-
-    Turn ``i`` in ``conversations_english`` is the direct translation of turn
-    ``i`` in ``conversations_spanish``. The lists are fully aligned by index.
-
-    Only human-authored turns (``from='human'``) are extracted. GPT-generated
-    responses are often long multi-paragraph answers that exceed
-    ``max_seq_len=256`` and get heavily truncated, adding noise. Human turns
-    are natural, concise sentences that make better MT training pairs.
-
-    This function performs a flat-map: with ``batched=True`` and
-    ``remove_columns``, ``datasets.map()`` supports returning more rows than it
-    receives, emitting one ``(en, es)`` pair per human turn.
-
-    Args:
-        dataset (datasets.Dataset): Single-split HuggingFace dataset.
-        cfg (dict): Data config dict with "src_lang_col" and
-            "tgt_lang_col" keys.
-
-    Returns:
-        datasets.Dataset: Dataset with flat string columns named
-            cfg["src_lang_col"] and cfg["tgt_lang_col"].
-
-    Raises:
-        ValueError: If neither the expected flat columns nor the
-            "conversations_english"/"conversations_spanish" format are found.
+    Extracts only human-authored turns from the nested conversation format.
     """
     src_col = cfg["src_lang_col"]
     tgt_col = cfg["tgt_lang_col"]
@@ -142,18 +121,6 @@ def _ensure_flat_columns(dataset: datasets.Dataset, cfg: dict) -> datasets.Datas
         )
 
         def extract_human_turns(examples: dict) -> dict:
-            """Flat-map a batch of conversations to individual human-turn pairs.
-
-            Args:
-                examples (dict): Batched HuggingFace map format where each
-                    value is a list; ``examples["conversations_english"]`` is a
-                    list of conversations, each of which is a list of
-                    ``{"from": str, "value": str}`` dicts.
-
-            Returns:
-                dict: Dict with ``src_col`` and ``tgt_col`` keys, each holding
-                    a flat list of extracted strings.
-            """
             src_texts: list[str] = []
             tgt_texts: list[str] = []
 
@@ -184,32 +151,19 @@ def _ensure_flat_columns(dataset: datasets.Dataset, cfg: dict) -> datasets.Datas
     raise ValueError(
         f"Cannot find source column '{src_col}' or target column '{tgt_col}' "
         f"in the dataset, and no known nested format was detected. "
-        f"Available columns: {dataset.column_names}. "
-        "Update src_lang_col / tgt_lang_col in configs/data/config.yaml "
-        "to match the actual flat string column names."
+        f"Available columns: {dataset.column_names}."
     )
 
 
-
 def main() -> None:
-    """Download the dataset and optionally inspect it.
-
-    Parses CLI arguments and runs the download phase. The phase is idempotent;
-    if the data already exists it is loaded from disk.
-
-    Use ``--inspect`` to print dataset column names and sample rows, then exit
-    without saving. This is useful to verify that
-    ``src_lang_col``/``tgt_lang_col`` in the config match the actual columns
-    before committing to a full pipeline run.
-    """
     parser = argparse.ArgumentParser(
-        description="Data preparation pipeline for the EN→ES translation project."
+        description="Data download for the EN→ES translation benchmark."
     )
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/data/config.yaml",
-        help="Path to the data configuration YAML file.",
+        default=None,
+        help="Optional YAML config file to override defaults.",
     )
     parser.add_argument(
         "--inspect",
@@ -218,7 +172,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    cfg = load_yaml_config(args.config)
+    cfg = dict(DEFAULTS)
+    if args.config:
+        with open(args.config, "r") as f:
+            overrides = yaml.safe_load(f) or {}
+        cfg.update(overrides)
 
     dataset = download_dataset(cfg)
 
@@ -237,8 +195,6 @@ def main() -> None:
             for col, val in row.items():
                 print(f"  {col}: {str(val)[:200]}")
         print("=" * 60)
-        print("Adjust src_lang_col / tgt_lang_col in configs/data/config.yaml "
-              "to match the actual column names above.")
         return
 
     logger.info("Data pipeline complete. Raw text saved to data/raw/.")
