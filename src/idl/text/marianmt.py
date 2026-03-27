@@ -10,6 +10,7 @@ os.environ["HF_HUB_VERBOSITY"] = "error"
 
 import torch
 import warnings
+import numpy as np
 
 warnings.filterwarnings("ignore")
 
@@ -28,6 +29,50 @@ import transformers
 
 transformers.logging.disable_progress_bar()
 transformers.logging.set_verbosity_error()
+
+
+def _ensure_marian_positional_patch():
+    """Apply a runtime monkeypatch to MarianSinusoidalPositionalEmbedding.create_weight
+    to be robust against unexpected 1D `weight` tensors in some environments.
+    This touches only project files and runs before any model is loaded.
+    """
+    try:
+        from transformers.models.marian import modeling_marian
+    except Exception:
+        return
+
+    # If patch already applied, skip
+    if getattr(modeling_marian.MarianSinusoidalPositionalEmbedding.create_weight, "_patched", False):
+        return
+
+    def _create_weight(self):
+        # Prefer explicit embedding attributes; fall back to weight.shape for compatibility.
+        n_pos = getattr(self, "num_embeddings", None)
+        dim = getattr(self, "embedding_dim", None)
+        if n_pos is None or dim is None:
+            w = getattr(self, "weight", None)
+            if w is None:
+                raise RuntimeError("MarianSinusoidalPositionalEmbedding has no weight or embedding attributes")
+            if hasattr(w, "shape") and len(w.shape) == 2:
+                n_pos, dim = w.shape
+            elif hasattr(w, "shape") and len(w.shape) == 1:
+                # fallback: infer from available attrs or assume embedding_dim equals length
+                dim = dim or int(w.shape[0])
+                n_pos = n_pos or 1
+            else:
+                raise RuntimeError("Unable to determine positional embedding shape")
+
+        position_enc = np.array(
+            [[pos / np.power(10000, 2 * (j // 2) / dim) for j in range(dim)] for pos in range(n_pos)]
+        )
+        out = torch.empty(n_pos, dim, dtype=getattr(self, "weight", torch.tensor(0)).dtype, requires_grad=False)
+        sentinel = dim // 2 if dim % 2 == 0 else (dim // 2) + 1
+        out[:, 0:sentinel] = torch.FloatTensor(np.sin(position_enc[:, 0::2]))
+        out[:, sentinel:] = torch.FloatTensor(np.cos(position_enc[:, 1::2]))
+        return out
+
+    _create_weight._patched = True
+    modeling_marian.MarianSinusoidalPositionalEmbedding.create_weight = _create_weight
 
 from idl.accelerate import ProfileConfig
 from idl.text.config import MarianMTConfig
@@ -160,6 +205,7 @@ class MarianMT:
         force_cpu = "cpu" in normalized_activities and "cuda" not in normalized_activities
         
         self.accelerator = Accelerator(kwargs_handlers=handlers, cpu=force_cpu)
+        _ensure_marian_positional_patch()
         self.model = MarianMTModel.from_pretrained(self.model_config.model_name)
         self.model.generation_config.max_length = None
         self.tokenizer = MarianTokenizer.from_pretrained(self.model_config.model_name)
@@ -218,6 +264,7 @@ class MarianMT:
     def load_model_inference(self):
         self.accelerator = self.profile_config.accelerator()
 
+        _ensure_marian_positional_patch()
         self.model = MarianMTModel.from_pretrained(self.model_config.model_name)
         self.model.generation_config.max_length = None
         self.tokenizer = MarianTokenizer.from_pretrained(self.model_config.model_name)
@@ -373,7 +420,7 @@ class MarianMT:
                         break
 
                     # If profiling. Just end after 300 steps.
-                    if self.profile_config.profile and step >= 100:
+                    if (self.profile_config.profile and step >= 100):
                         timed_out = True
                         break
 

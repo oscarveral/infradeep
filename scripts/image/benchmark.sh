@@ -30,6 +30,23 @@ declare -A PROFILE_MAP=(
     ["2xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
     ["3xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
     ["4xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB32"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB64"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB128"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB16+BF16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB32+BF16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB64+BF16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB128+BF16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB16+BF16+DZ"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB32+BF16+DZ"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB64+BF16+DZ"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB128+BF16+DZ"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["1xCPU+BB16+BF16"]="$PROFILES_DIR/profile_cpu.yaml"
+    ["1xCPU+BB32+BF16"]="$PROFILES_DIR/profile_cpu.yaml"
+    ["1xCPU+BB64+BF16"]="$PROFILES_DIR/profile_cpu.yaml"
+    ["1xCPU+BB128+BF16"]="$PROFILES_DIR/profile_cpu.yaml"
+    
 )
 
 PROFILE_NO="$PROFILES_DIR/profile_no.yaml"

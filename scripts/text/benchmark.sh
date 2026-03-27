@@ -29,6 +29,18 @@ declare -A PROFILE_MAP=(
     ["2xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
     ["3xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
     ["4xGPU"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB32"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB64"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB128"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB16+BF16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB32+BF16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB64+BF16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB128+BF16"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB16+BF16+DZ"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB32+BF16+DZ"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB64+BF16+DZ"]="$PROFILES_DIR/profile_multi_gpu.yaml"
+    ["4xGPU+BB128+BF16+DZ"]="$PROFILES_DIR/profile_multi_gpu.yaml"
 )
 
 PROFILE_NO="$PROFILES_DIR/profile_no.yaml"
@@ -85,6 +97,15 @@ for env_dir in "$CONFIGS_DIR"/*/; do
         profile_config="$PROFILES_DIR/profile_gpu.yaml"
     fi
 
+    # Run 1: no profiling.
+    run_experiment \
+        "$env_name" \
+        "$accel_config" \
+        "$model_config" \
+        "$PROFILE_NO" \
+        "$RESULTS_DIR/$env_name/no_profile" \
+        "no profiling"
+
     # Run 2: with profiling.
     run_experiment \
         "$env_name" \
@@ -94,14 +115,6 @@ for env_dir in "$CONFIGS_DIR"/*/; do
         "$RESULTS_DIR/$env_name/profile" \
         "with profiling"
 
-    # Run 1: no profiling.
-    #run_experiment \
-    #    "$env_name" \
-    #    "$accel_config" \
-    #    "$model_config" \
-    #    "$PROFILE_NO" \
-    #    "$RESULTS_DIR/$env_name/no_profile" \
-    #    "no profiling"
 
 done
 
