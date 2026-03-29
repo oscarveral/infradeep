@@ -1,0 +1,7 @@
+mode: "inference"
+time_limit_seconds: 20
+num_workers: 4
+per_device_batch_size: 128
+pin_memory: True
+persistent_workers: True
+warmup_batches: 2

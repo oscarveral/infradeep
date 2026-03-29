@@ -1,0 +1,10 @@
+mode: "train"
+num_epochs: 3
+time_limit_seconds: 3600
+per_device_batch_size: 64
+max_seq_len: 256
+num_workers: 4
+pin_memory: True
+persistent_workers: True
+warmup_batches: 2
+checkpoint_dir: "models"

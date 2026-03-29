@@ -1,0 +1,18 @@
+[project]
+name = "idl"
+dependencies = [
+    "torch",
+    "accelerate",
+    "transformers",
+    "datasets",
+    "pillow",
+    "sacrebleu",
+    "sentencepiece",
+    "deepspeed",
+]
+version = "1.0.0"
+requires-python = ">=3.14"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
