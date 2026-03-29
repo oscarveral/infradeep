@@ -5,7 +5,10 @@ dependencies = [
     "accelerate",
     "transformers",
     "datasets",
-    "pillow"
+    "pillow",
+    "sacrebleu",
+    "sentencepiece",
+    "deepspeed",
 ]
 version = "1.0.0"
 requires-python = ">=3.14"

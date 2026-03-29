@@ -301,6 +301,7 @@ class ViT:
                 "throughput_images_per_second": round(throughput, 4),
                 "step_metrics": step_metrics,
                 "epoch_metrics": epoch_metrics,
+                "model_size": self._build_model_size_stats(),
                 "memory": self._build_memory_stats(memory_rss_samples_mb, memory_cuda_samples_mb),
                 "profile": profile_stats,
                 "config": self._build_config_snapshot(),
@@ -411,6 +412,7 @@ class ViT:
                 "total_images_processed": int(global_processed_images),
                 "throughput_images_per_second": round(throughput, 4),
                 "step_metrics": step_metrics,
+                "model_size": self._build_model_size_stats(),
                 "memory": self._build_memory_stats(memory_rss_samples_mb, memory_cuda_samples_mb),
                 "profile": profile_stats,
                 "config": self._build_config_snapshot(),
@@ -502,6 +504,24 @@ class ViT:
         if peak is not None:
             stats["cuda_peak_mb"] = round(peak, 4)
         return stats
+
+    def _build_model_size_stats(self) -> dict:
+        """Compute model parameter counts and weight memory estimates."""
+        if self.model is None:
+            return {}
+        total = sum(p.numel() for p in self.model.parameters())
+        trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        non_trainable = total - trainable
+        fp32_mb = total * 4 / (1024 ** 2)
+        fp16_mb = total * 2 / (1024 ** 2)
+        return {
+            "total_parameters": total,
+            "trainable_parameters": trainable,
+            "non_trainable_parameters": non_trainable,
+            "weight_memory_fp32_mb": round(fp32_mb, 2),
+            "weight_memory_fp16_mb": round(fp16_mb, 2),
+            "adam_state_fp32_mb": round(fp32_mb * 2, 2),
+        }
 
     def _build_config_snapshot(self) -> dict:
         """Embed resolved configs in output for reproducibility."""
